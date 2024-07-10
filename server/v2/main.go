@@ -9,6 +9,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -220,8 +222,13 @@ func handleTunneling(pool *TCPPool, c *gin.Context) {
 }
 
 func main() {
+	url, err := GetProxyUrlAndPort()
+	if err != nil {
+		panic(err)
+	}
+
 	// 创建TCP连接池
-	pool := NewTCPPool("", 1)
+	pool := NewTCPPool(url, 1)
 
 	client := &http.Client{
 		Transport: &PoolTransport{Pool: pool},
@@ -274,4 +281,23 @@ func main() {
 	if err := router.Run(":8000"); err != nil {
 		panic(err)
 	}
+}
+
+func GetProxyUrlAndPort() (string, error) {
+	reqUrl := ""
+	client := http.Client{}
+	req, _ := http.NewRequest("GET", reqUrl, nil)
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	body, _ := io.ReadAll(res.Body)
+	newContent := strings.TrimSpace(string(body))
+	_, err = url.Parse(newContent)
+	if err != nil {
+		return "", err
+	}
+
+	return string(newContent), nil
 }
